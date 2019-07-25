@@ -1197,6 +1197,18 @@ class Trainer(object):
 
         # Cast to the right dtype and return
         batch = self.cast(batch)
+        # Set gradients if required
+        variable_batch = []
+        for batch_num, _batch in enumerate(batch):
+            if thu.is_tensor(_batch):
+                variable_batch.append(_batch.requires_grad_() if requires_grad else _batch)
+            elif pyu.is_listlike(_batch):
+                variable_batch.append([__batch.requires_grad_() if requires_grad else __batch
+                                       for __batch in _batch])
+            else:
+                raise RuntimeError(f"Was Expecting batch at index {batch_num} to be either a "
+                                   f"tensor or a list of tensors. Got {type(_batch)} instead.")
+        batch = type(batch)(variable_batch)
         return batch
 
     def next_iteration(self):
@@ -1362,7 +1374,7 @@ class Trainer(object):
             kwargs['trainer'] = self
         if mode == 'train':
             loss = self.criterion(prediction, target, **kwargs) \
-                   if len(target) != 0  else self.criterion(prediction, **kwargs) 
+                   if len(target) != 0  else self.criterion(prediction, **kwargs)
         elif mode == 'eval':
             loss = self.validation_criterion(prediction, target, **kwargs) \
                    if len(target) != 0  else self.validation_criterion(prediction, **kwargs)
