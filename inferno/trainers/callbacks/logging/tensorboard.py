@@ -294,7 +294,7 @@ class TensorboardLogger(Logger):
         assert batch_is_volume_tensor != batch_is_image_tensor, \
             "Batch must either be a image or a volume tensor."
         # Convert to numpy
-        batch = batch.float().numpy()
+        batch = batch.detach().float().numpy()
         # Get the indices of the batches we want to send to tensorboard
         batch_indices = self._config.get('image_batch_indices', 'all')
         if batch_indices == 'all':
