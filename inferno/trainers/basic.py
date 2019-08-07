@@ -1441,7 +1441,6 @@ class Trainer(object):
             # Update state from model's state hooks
             self.update_state_from_model_state_hooks()
             if iteration_num % self._backprop_every == 0:
-                print ("Backprop!")
                # Update parameters
                 self.optimizer.step()
                 # Zero out the grads
