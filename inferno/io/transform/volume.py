@@ -5,6 +5,7 @@ from scipy.ndimage.morphology import binary_dilation, binary_erosion
 from .base import Transform
 from ...utils.exceptions import assert_
 
+
 class RandomFlip3D(Transform):
     def __init__(self, **super_kwargs):
         super(RandomFlip3D, self).__init__(**super_kwargs)
@@ -124,7 +125,7 @@ class CentralSlice(Transform):
 class VolumeCenterCrop(Transform):
     """ Crop patch of size `size` from the center of the volume """
     def __init__(self, size, **super_kwargs):
-        super(VolumeCrop, self).__init__(**super_kwargs)
+        super(VolumeCenterCrop, self).__init__(**super_kwargs)
         assert isinstance(size, (int, tuple))
         self.size = (size, size, size) if isinstance(size, int) else size
         assert len(size) == 3
@@ -159,24 +160,25 @@ class Slices2Channels(Transform):
     """ Needed for training 2D network with slices above/below as additional channels
         For the input data transforms one dimension (x, y or z) into channels
         For the target data just takes the central slice and discards all the rest"""
-    def __init__(self, num_channels, downsampling = 1, **super_kwargs):
+    def __init__(self, num_channels, downsampling=1, **super_kwargs):
         super(Slices2Channels, self).__init__(**super_kwargs)
         self.channels = num_channels
         self.downsampling = downsampling
+
     def batch_function(self, batch):
         try:
-            self.axis = batch[0].shape.index(self.channels)
+            axis = batch[0].shape.index(self.channels)
         except ValueError:
-            print ("The axis has the shape of the desired channels number!")
+            print("The axis has the shape of the desired channels number!")
         half = int(self.channels/2)
-        new_input = np.moveaxis(batch[0], self.axis, 0)
-        #take every nth slice to the both directions of the central slice
+        new_input = np.moveaxis(batch[0], axis, 0)
+        # take every nth slice to the both directions of the central slice
         indices = []
-        for i in range (self.channels):
-            if i%self.downsampling == half%self.downsampling:
+        for i in range(self.channels):
+            if i % self.downsampling == half % self.downsampling:
                 indices.append(i)
-        new_input = new_input[indices]   #num_chan after - int (num_chan/(2*downsample)) * 2 + 1
-        new_target = np.moveaxis(batch[1], self.axis, 0)
+        new_input = new_input[indices]   # num_chan after - int (num_chan/(2*downsample)) * 2 + 1
+        new_target = np.moveaxis(batch[1], axis, 0)
         new_target = new_target[half]
         return (new_input, new_target)
 
@@ -203,8 +205,8 @@ class RandomScale3D(Transform):
         """
         super(RandomScale3D, self).__init__(**super_kwargs)
         assert_(len(zoom_factor_range) == 2,
-                    "`zoom_factor_range` must be a list or a tuple of length 2.",
-                    ValueError)
+                "`zoom_factor_range` must be a list or a tuple of length 2.",
+                ValueError)
         self.min = zoom_factor_range[0]
         self.max = zoom_factor_range[1]
         self.interpolation_order = interpolation_order
@@ -233,7 +235,7 @@ class RandomScale3D(Transform):
             zoom_y, zoom_x = zoom_z, zoom_z
 
         zoomed_volume = zoom(volume, (zoom_z, zoom_y, zoom_x),
-                                 order=self.interpolation_order, **self.zoom_kwargs)
+                             order=self.interpolation_order, **self.zoom_kwargs)
         return zoomed_volume
 
 
@@ -242,7 +244,7 @@ class RandomBinaryMorphology3D(Transform):
     Apply a random binary morphology operation  (dilation or erosion).
     Allowed range of iteration number can be set.
     """
-    def __init__(self, p=0.5, num_iter_range=(1,5), morphology_kwargs=None, **super_kwargs):
+    def __init__(self, p=0.5, num_iter_range=(1, 5), morphology_kwargs=None, **super_kwargs):
         """
         Parameters
         ----------
@@ -259,8 +261,8 @@ class RandomBinaryMorphology3D(Transform):
         """
         super(RandomBinaryMorphology3D, self).__init__(**super_kwargs)
         assert_(len(num_iter_range) == 2,
-                    "`num_iter_range` must be a list or a tuple of length 2.",
-                    ValueError)
+                "`num_iter_range` must be a list or a tuple of length 2.",
+                ValueError)
         self.p = p
         self.min_iter = num_iter_range[0]
         self.max_iter = num_iter_range[1] + 1
@@ -280,10 +282,10 @@ class RandomBinaryMorphology3D(Transform):
         if do:
             if erode_mode:
                 transformed_volume = binary_erosion(volume, iterations=iter_num,
-                                                **self.morphology_kwargs)
+                                                    **self.morphology_kwargs)
             else:
                 transformed_volume = binary_dilation(volume, iterations=iter_num,
-                                                **self.morphology_kwargs)
+                                                     **self.morphology_kwargs)
             volume = transformed_volume.astype(volume.dtype)
 
         return volume
@@ -316,9 +318,9 @@ class CropPad2Divisible(Transform):
         """
         super(CropPad2Divisible, self).__init__(**super_kwargs)
         assert_(0 <= crop_pad_threshold <= 1,
-                    "threshold must be between 0 and 1 inclusive",
-                    ValueError)
-        assert_(divisor%2==0, "divisor must be an even number", ValueError)
+                "threshold must be between 0 and 1 inclusive",
+                ValueError)
+        assert_(divisor % 2 == 0, "divisor must be an even number", ValueError)
         self.divisor = divisor
         self.crop_pad_threshold = crop_pad_threshold
         self.mode = mode
@@ -326,17 +328,59 @@ class CropPad2Divisible(Transform):
 
     def volume_function(self, volume):
         half_div = int(self.divisor/2)
-        remainders = [axis%self.divisor for axis in volume.shape]
+        remainders = [axis % self.divisor for axis in volume.shape]
         to_pad = [remainder/self.divisor >= self.crop_pad_threshold
-               for remainder in remainders]
+                  for remainder in remainders]
         diffs = [(int(np.floor(remainder/2)), int(np.ceil(remainder/2)))
-                   for remainder in remainders]
+                 for remainder in remainders]
         padding = [(half_div - diff[0], half_div - diff[1])
-                    if pad else (0, 0)
-                    for diff, pad in zip(diffs, to_pad)]
+                   if pad else (0, 0)
+                   for diff, pad in zip(diffs, to_pad)]
         cropping = [slice(diff[0], -diff[1])
-                    if not (pad or diff[1]==0) else slice(None, None)
+                    if not (pad or diff[1] == 0) else slice(None, None)
                     for diff, pad in zip(diffs, to_pad)]
+        volume = np.pad(volume, pad_width=padding, mode=self.mode, **self.padding_kwargs)
+        volume = volume[cropping]
+
+        return volume
+
+
+class CropPad2Size(Transform):
+    """
+    Adjust the input volume to the given size:
+    Symmetrically crops if input > size, symmetrically pads if input < size.
+    """
+    def __init__(self, output_size, mode='constant',
+                 padding_kwargs=None, **super_kwargs):
+        """
+        Parameters
+        ----------
+        output_size : int, tuple or list
+            The output size. If int, the same value is used for all axes
+        mode: ‘constant’, ‘edge’, ‘symmetric’, etc
+            See all the possible modes in numpy.pad doc
+        padding_kwargs: dict
+            Keyword arguments to numpy.pad
+        super_kwargs : dict
+            Keyword arguments to the superclass.
+        """
+        super(CropPad2Size, self).__init__(**super_kwargs)
+        self.output_size = output_size if isinstance(output_size, (list, tuple)) \
+                                       else (output_size, ) * 3
+        assert len(self.output_size == 3), 'The size should be given for all the dimensions'
+        self.mode = mode
+        self.padding_kwargs = {} if padding_kwargs is None else dict(padding_kwargs)
+
+    def volume_function(self, volume):
+        difference = [inp - outp for inp, outp in zip(volume.shape, self.output_size)]
+        to_pad = [diff < 0 for diff in difference]
+        to_crop = [diff > 0 for diff in difference]
+        diffs = [(int(np.floor(diff/2)), int(np.ceil(diff/2)))
+                 for diff in np.abs(difference)]
+        padding = [(diff[0], diff[1]) if pad else (0, 0)
+                   for diff, pad in zip(diffs, to_pad)]
+        cropping = [slice(diff[0], -diff[1]) if crop else slice(None, None)
+                    for diff, crop in zip(diffs, to_crop)]
         volume = np.pad(volume, pad_width=padding, mode=self.mode, **self.padding_kwargs)
         volume = volume[cropping]
 
