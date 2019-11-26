@@ -367,7 +367,7 @@ class CropPad2Size(Transform):
         super(CropPad2Size, self).__init__(**super_kwargs)
         self.output_size = output_size if isinstance(output_size, (list, tuple)) \
                                        else (output_size, ) * 3
-        assert len(self.output_size == 3), 'The size should be given for all the dimensions'
+        assert len(self.output_size) == 3, 'The size should be given for all the dimensions'
         self.mode = mode
         self.padding_kwargs = {} if padding_kwargs is None else dict(padding_kwargs)
 
