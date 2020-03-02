@@ -56,6 +56,7 @@ class AnisotropicPool(nn.MaxPool3d):
                                               stride=(1, ds, ds),
                                               padding=(0, 1, 1))
 
+
 class AnisotropicUpsample2D(nn.Module):
     def __init__(self, scale_factor):
         super(AnisotropicUpsample2D, self).__init__()
@@ -79,6 +80,17 @@ class AnisotropicPool2D(nn.MaxPool2d):
     def __init__(self, downscale_factor):
         ds = downscale_factor
         super(AnisotropicPool2D, self).__init__(kernel_size=(1, ds + 1),
-                                              stride=(1, ds),
-                                              padding=(0, 1))
+                                                stride=(1, ds),
+                                                padding=(0, 1))
 
+
+class GlobalMaskedAvgPool3d(nn.Module):
+    def __init__(self, ):
+        super(GlobalMaskedAvgPool3d, self).__init__()
+
+    def forward(self, input_, mask):
+        assert(input_.ndim == 5), 'The input should be 3D'
+        N, C, D, H, W = input_.size()
+        flat_inp = input_.view(N, C, D * H * W)
+        flat_mask = mask.view(N, -1, D * H * W)
+        return torch.sum(flat_inp * flat_mask, axis=2) / torch.sum(flat_mask, axis=2)
