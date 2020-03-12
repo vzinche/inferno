@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 __all__ = ['AnisotropicUpsample', 'AnisotropicPool', 'Upsample', 'AnisotropicUpsample2D', 'AnisotropicPool2D']
@@ -85,7 +86,7 @@ class AnisotropicPool2D(nn.MaxPool2d):
 
 
 class GlobalMaskedAvgPool3d(nn.Module):
-    def __init__(self, ):
+    def __init__(self):
         super(GlobalMaskedAvgPool3d, self).__init__()
 
     def forward(self, input_, mask):
@@ -94,3 +95,23 @@ class GlobalMaskedAvgPool3d(nn.Module):
         flat_inp = input_.view(N, C, D * H * W)
         flat_mask = mask.view(N, -1, D * H * W)
         return torch.sum(flat_inp * flat_mask, axis=2) / torch.sum(flat_mask, axis=2)
+
+
+class HistPool(nn.Module):
+    def __init__(self, min_val=None, max_val=None, bin_num=200):
+        super(HistPool, self).__init__()
+        self.min_val = min_val
+        self.max_val = max_val
+        self.bin_num = bin_num
+
+    def forward(self, input_):
+        N, C = input_.size()[:2]
+        if self.min_val:
+            input_[input_ < self.min_val] = self.min_val
+        if self.max_val:
+            input_[input_ > self.max_val] = self.max_val
+        hist = [torch.stack([torch.histc(channel, bins=self.bin_num,
+                                         min=self.min_val, max=self.max_val)
+                             for channel in batch])
+                             for batch in input_]
+        return torch.stack(hist)
