@@ -20,7 +20,7 @@ class TensorboardLogger(Logger):
     Currently supports logging scalars and images.
     """
     # This is hard coded because tensorboardX doesn't have a __version__
-    _TENSORBOARDX_IMAGE_FORMAT = 'HWC'
+    _TENSORBOARDX_IMAGE_FORMAT = 'CHW'
     _DEBUG = False
 
     def __init__(self, log_directory=None,
@@ -310,7 +310,7 @@ class TensorboardLogger(Logger):
         if channel_indices == 'all':
             channel_indices = list(range(batch.shape[1]))
         elif channel_indices == 'mid':
-                channel_indices = [batch.shape[1] // 2]
+            channel_indices = [batch.shape[1] // 2]
         elif isinstance(channel_indices, (list, tuple)):
             pass
         elif isinstance(channel_indices, int):
@@ -403,15 +403,14 @@ class TensorboardLogger(Logger):
         # image axis gymnastics
         _not_implemented_message = "target_format must be 'CHW' or 'HCW'."
         if image.ndim == 2:
-            pass
-            #if target_format == 'CHW':
+            if target_format == 'CHW':
                 # image is 2D - tensorboardX 1.4+ needs a channel axis in the front
-            #    image = image[None, ...]
-            #elif target_format == 'HWC':
+                image = image[None, ...]
+            elif target_format == 'HWC':
                 # image is 2D - tensorboardX 1.3- needs a channel axis in the end
-            #    image = image[..., None]
-            #else:
-            #    raise NotImplementedError(_not_implemented_message)
+                image = image[..., None]
+            else:
+                raise NotImplementedError(_not_implemented_message)
         elif image.ndim == 3 and image_format.upper() == 'CHW':
             if target_format == 'CHW':
                 # Nothing to do here
