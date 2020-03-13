@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-__all__ = ['TripletLoss']
+__all__ = ['TripletLoss', 'KLDTripletLoss']
 
 
 class TripletLoss(nn.Module):
@@ -25,3 +25,15 @@ class TripletLoss(nn.Module):
         if self.abs:
             loss = sum(loss > 0).type(torch.float) / len(triplet)
         return loss
+
+
+class KLDTripletLoss(TripletLoss):
+    def __init__(self, **kwargs):
+        super(KLDTripletLoss, self).__init__(**kwargs)
+
+    def forward(self, triplet, target=None):
+        triplet_loss = super(KLDTripletLoss, self).forward(triplet)
+        logvar = torch.log(torch.var(triplet))
+        mu = torch.mean(triplet)
+        KLD = -0.5 * torch.sum(1 + logvar - logvar.exp() - mu.pow(2))
+        return triplet_loss + KLD

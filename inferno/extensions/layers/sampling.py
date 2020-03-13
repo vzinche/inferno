@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 __all__ = ['AnisotropicUpsample', 'AnisotropicPool', 'Upsample', 'AnisotropicUpsample2D', 'AnisotropicPool2D']
@@ -56,6 +57,7 @@ class AnisotropicPool(nn.MaxPool3d):
                                               stride=(1, ds, ds),
                                               padding=(0, 1, 1))
 
+
 class AnisotropicUpsample2D(nn.Module):
     def __init__(self, scale_factor):
         super(AnisotropicUpsample2D, self).__init__()
@@ -79,6 +81,37 @@ class AnisotropicPool2D(nn.MaxPool2d):
     def __init__(self, downscale_factor):
         ds = downscale_factor
         super(AnisotropicPool2D, self).__init__(kernel_size=(1, ds + 1),
-                                              stride=(1, ds),
-                                              padding=(0, 1))
+                                                stride=(1, ds),
+                                                padding=(0, 1))
 
+
+class GlobalMaskedAvgPool3d(nn.Module):
+    def __init__(self):
+        super(GlobalMaskedAvgPool3d, self).__init__()
+
+    def forward(self, input_, mask):
+        assert(input_.ndim == 5), 'The input should be 3D'
+        N, C, D, H, W = input_.size()
+        flat_inp = input_.view(N, C, D * H * W)
+        flat_mask = mask.view(N, -1, D * H * W)
+        return torch.sum(flat_inp * flat_mask, axis=2) / torch.sum(flat_mask, axis=2)
+
+
+class HistPool(nn.Module):
+    def __init__(self, min_val=None, max_val=None, bin_num=200):
+        super(HistPool, self).__init__()
+        self.min_val = min_val
+        self.max_val = max_val
+        self.bin_num = bin_num
+
+    def forward(self, input_):
+        N, C = input_.size()[:2]
+        if self.min_val:
+            input_[input_ < self.min_val] = self.min_val
+        if self.max_val:
+            input_[input_ > self.max_val] = self.max_val
+        hist = [torch.stack([torch.histc(channel, bins=self.bin_num,
+                                         min=self.min_val, max=self.max_val)
+                             for channel in batch])
+                             for batch in input_]
+        return torch.stack(hist)
