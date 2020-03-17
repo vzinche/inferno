@@ -263,9 +263,30 @@ class Trainer(object):
         assert isinstance(value, bool)
         self._retain_graph = value
 
-    def backprop_every(self, value):    # iterations
-        assert isinstance(value, int)
-        self._backprop_every = value
+    @property
+    def backprop_every(self):
+        return self._backprop_every
+
+    @backprop_every.setter
+    def backprop_every(self, value):
+        self.set_backprop_every(value)
+
+    def set_backprop_every(self, num_steps):
+        """
+        Set frequency of backpropagation.
+        To use in cases of small batch sizes.
+
+        Parameters
+        ----------
+        num_steps : number of steps (iterations/batches) to backprop after
+
+        Returns
+        -------
+        Trainer
+            self
+        """
+        assert isinstance(num_steps, int)
+        self._backprop_every = num_steps
         return self
 
     @property
@@ -1486,7 +1507,7 @@ class Trainer(object):
             self.update_state('training_loss', thu.unwrap(loss))
             # Update state from model's state hooks
             self.update_state_from_model_state_hooks()
-            if iteration_num % self._backprop_every == 0:
+            if iteration_num % self.backprop_every == 0:
                # Update parameters
                 self.optimizer.step()
                 # Zero out the grads
