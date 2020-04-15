@@ -358,7 +358,7 @@ class CropPad2Size(Transform):
         ----------
         output_size : int, tuple or list
             The output size. If int, the same value is used for all axes
-        mode: ‘constant’, ‘edge’, ‘symmetric’, etc
+        mode: `constant`, `edge`, `symmetric`, etc
             See all the possible modes in numpy.pad doc
         padding_kwargs: dict
             Keyword arguments to numpy.pad

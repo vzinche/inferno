@@ -27,7 +27,8 @@ class Normalize(Transform):
 
     def tensor_function(self, tensor):
         # if we have a background value that we don't want to normalize
-        mask = (tensor != self.ignore_value) if self.ignore_value is not None else np.ones_like(tensor, dtype='bool')
+        mask = (tensor != self.ignore_value) if self.ignore_value is not None \
+                                             else np.ones_like(tensor, dtype='bool')
         mean = np.asarray(tensor[mask].mean()) if self.mean is None else self.mean
         std = np.asarray(tensor[mask].std()) if self.std is None else self.std
         # Figure out how to reshape mean and std
