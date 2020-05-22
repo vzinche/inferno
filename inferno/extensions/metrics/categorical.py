@@ -6,9 +6,10 @@ from ...utils.exceptions import assert_, DTypeError, ShapeError
 
 class CategoricalError(Metric):
     """Categorical error."""
-    def __init__(self, aggregation_mode='mean'):
+    def __init__(self, aggregation_mode='mean', add_sigmoid=False):
         assert aggregation_mode in ['mean', 'sum']
         self.aggregation_mode = aggregation_mode
+        self.add_sigmoid = add_sigmoid
 
     def forward(self, prediction, target):
         # Check if prediction is binary or not
@@ -20,6 +21,8 @@ class CategoricalError(Metric):
 
         if is_binary:
             # Binary classification
+            if self.add_sigmoid:
+                prediction = torch.sigmoid(prediction)
             prediction = prediction > 0.5
             incorrect = prediction.type_as(target).ne(target).float()
             if self.aggregation_mode == 'mean':
