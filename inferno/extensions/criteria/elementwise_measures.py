@@ -70,15 +70,15 @@ class MaskedBceRegularized(nn.Module):
         return bce_loss + reg_loss
 
 
-class SoftBCE(nn.Module):
+class SoftCE(nn.Module):
     def __init__(self, soften=0.2):
-        super(SoftBCE, self).__init__()
+        super().__init__()
         self.soften = soften
 
-    def forward(self, pred, target):
-        pred = F.softmax(pred, dim=1)
-        num_labels = pred.shape[-1]
-        target_onehot = torch.eye(num_labels)[target]
+    def forward(self, input_, target):
+        num_labels = input_.shape[-1]
+        target_onehot = torch.eye(num_labels)[target].to(target.device)
         target_onehot[target_onehot == 1] = 1 - self.soften
         target_onehot[target_onehot == 0] = self.soften / (num_labels - 1)
-        return F.binary_cross_entropy(pred, target_onehot, reduction='sum')
+        logprobs = F.log_softmax(input_, dim = 1)
+        return  -(target_onehot * logprobs).sum() / input_.shape[0]
