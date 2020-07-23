@@ -10,8 +10,6 @@ class TripletLoss(nn.Module):
         self.abs = absolute
         if self.abs:
             reduction = 'none'
-        if reduction == 'mean':     # pytorch, what's wrong with you
-            reduction = 'elementwise_mean'
         self.loss = nn.TripletMarginLoss(margin=margin, p=p,
                                          swap=swap, reduction=reduction)
 

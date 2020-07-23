@@ -341,7 +341,7 @@ class CropPad2Divisible(Transform):
                     if not (pad or diff[1] == 0) else slice(None, None)
                     for diff, pad in zip(diffs, to_pad)]
         volume = np.pad(volume, pad_width=padding, mode=self.mode, **self.padding_kwargs)
-        volume = volume[cropping]
+        volume = volume[tuple(cropping)]
 
         return volume
 
