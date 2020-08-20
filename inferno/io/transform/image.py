@@ -598,3 +598,45 @@ class RandomScaleSegmentation(Transform):
                 img = np.pad(img, padding, 'constant', constant_values=self.pad_const)
                 seg = np.pad(seg, padding, 'constant', constant_values=self.pad_const)
         return img, seg
+
+
+class CropPad2Size(Transform):
+    """
+    Adjust the input image to the given size:
+    Symmetrically crops if input > size, symmetrically pads if input < size.
+    """
+    def __init__(self, output_size, mode='constant',
+                 padding_kwargs=None, **super_kwargs):
+        """
+        Parameters
+        ----------
+        output_size : int, tuple or list
+            The output size. If int, the same value is used for all axes
+        mode: `constant`, `edge`, `symmetric`, etc
+            See all the possible modes in numpy.pad doc
+        padding_kwargs: dict
+            Keyword arguments to numpy.pad
+        super_kwargs : dict
+            Keyword arguments to the superclass.
+        """
+        super(CropPad2Size, self).__init__(**super_kwargs)
+        self.output_size = output_size if isinstance(output_size, (list, tuple)) \
+                                       else (output_size, ) * 2
+        assert len(self.output_size) == 2, 'The size should be given for all the dimensions'
+        self.mode = mode
+        self.padding_kwargs = {} if padding_kwargs is None else dict(padding_kwargs)
+
+    def image_function(self, image):
+        difference = [inp - outp for inp, outp in zip(image.shape, self.output_size)]
+        to_pad = [diff < 0 for diff in difference]
+        to_crop = [diff > 0 for diff in difference]
+        diffs = [(int(np.floor(diff/2)), int(np.ceil(diff/2)))
+                 for diff in np.abs(difference)]
+        padding = [(diff[0], diff[1]) if pad else (0, 0)
+                   for diff, pad in zip(diffs, to_pad)]
+        cropping = [slice(diff[0], -diff[1]) if crop else slice(None, None)
+                    for diff, crop in zip(diffs, to_crop)]
+        image = np.pad(image, pad_width=padding, mode=self.mode, **self.padding_kwargs)
+        image = image[tuple(cropping)]
+
+        return image

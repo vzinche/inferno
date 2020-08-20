@@ -430,6 +430,6 @@ class CropPad2Size(Transform):
         cropping = [slice(diff[0], -diff[1]) if crop else slice(None, None)
                     for diff, crop in zip(diffs, to_crop)]
         volume = np.pad(volume, pad_width=padding, mode=self.mode, **self.padding_kwargs)
-        volume = volume[cropping]
+        volume = volume[tuple(cropping)]
 
         return volume

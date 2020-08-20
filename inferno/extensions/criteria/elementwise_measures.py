@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -71,14 +72,18 @@ class MaskedBceRegularized(nn.Module):
 
 
 class SoftCE(nn.Module):
-    def __init__(self, soften=0.2):
+    def __init__(self, smoothing=0.2):
         super().__init__()
-        self.soften = soften
+        # smoothing can be a fixed value or a range
+        assert isinstance(smoothing, float) or len(smoothing) == 2
+        self.smoothing = smoothing
 
     def forward(self, input_, target):
+        smooth = self.smoothing if isinstance(self.smoothing, float) \
+                 else np.random.uniform(*self.smoothing)
         num_labels = input_.shape[-1]
         target_onehot = torch.eye(num_labels)[target].to(target.device)
-        target_onehot[target_onehot == 1] = 1 - self.soften
-        target_onehot[target_onehot == 0] = self.soften / (num_labels - 1)
+        target_onehot[target_onehot == 1] = 1 - smooth
+        target_onehot[target_onehot == 0] = smooth / (num_labels - 1)
         logprobs = F.log_softmax(input_, dim = 1)
         return  -(target_onehot * logprobs).sum() / input_.shape[0]
