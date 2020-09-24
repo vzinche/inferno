@@ -25,6 +25,10 @@ class Criteria(nn.Module):
             "weight must be given for every criterion"
         self.weights = weights
 
+    def apply_criterion(self, crt, pred, trgt):
+        val = crt(pred) if trgt is None else crt(pred, trgt)
+        return val
+
     def forward(self, prediction, target):
         assert isinstance(prediction, (list, tuple)), \
             "`prediction` must be a list or a tuple, got {} instead."\
@@ -32,11 +36,13 @@ class Criteria(nn.Module):
         assert isinstance(target, (list, tuple)), \
             "`prediction` must be a list or a tuple, got {} instead." \
                 .format(type(target).__name__)
-        assert len(prediction) == len(target), \
-            "Number of predictions must equal the number of targets. " \
-            "Got {} predictions but {} targets.".format(len(prediction), len(target))
+        # some losses don't require targets
+        # then no target losses should be the last ones
+        if len(target) < len(prediction):
+            diff = len(prediction) - len(target)
+            target = target + [None, ] * diff
         # Compute losses
-        losses = [weight * criterion(_prediction, _target)
+        losses = [weight * self.apply_criterion(criterion, _prediction, _target)
                   for weight, _prediction, _target, criterion
                   in zip(self.weights, prediction, target, self.criteria)]
         # Aggegate losses

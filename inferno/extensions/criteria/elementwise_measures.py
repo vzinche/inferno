@@ -32,9 +32,25 @@ class WeightedMSELoss(nn.Module):
         return self.mse(input * sqrt_weights, target * sqrt_weights)
 
 
+class Norm(nn.Module):
+    def __init__(self, order=1, size_average=True):
+        super().__init__()
+        self.order = order
+        self.average = size_average
+
+    def forward(self, inp, target=None):
+        if target is not None:
+            inp = inp - target
+        inp = inp.flatten()
+        norm = torch.norm(inp, p=self.order)
+        if self.average:
+            norm = norm / len(inp)
+        return norm
+
+
 class MaskedBce(nn.Module):
     # Masked binary crossentropy to target
-    def __init__(self, norm=2, mask_value=False):
+    def __init__(self, mask_value=False):
         super(MaskedBce, self).__init__()
         self.mask_value = mask_value     # the value to ignore for reconstruction loss
 
@@ -47,28 +63,6 @@ class MaskedBce(nn.Module):
         bce_loss = F.binary_cross_entropy(output[mask].flatten(),
                                           target[mask].flatten())
         return bce_loss
-
-
-class MaskedBceRegularized(nn.Module):
-    # Masked binary crossentropy to target plus norm on embedding
-    def __init__(self, norm=2, mask_value=False):
-        super(MaskedBceRegularized, self).__init__()
-        self.norm = norm
-        self.mask_value = mask_value     # the value to ignore for reconstruction loss
-
-    def forward(self, output, target):
-        # check if bool False and not int 0
-        if not self.mask_value and isinstance(self.mask_value, bool):
-            mask = torch.ones(target.shape).bool()
-        else:
-            mask = (target != self.mask_value)
-        # The output should include the embedding
-        assert len(output) == 2
-        reconstruction, embedding = output
-        bce_loss = F.binary_cross_entropy(reconstruction[mask].flatten(),
-                                          target[mask].flatten())
-        reg_loss = embedding.norm(p=self.norm) / len(embedding.flatten())
-        return bce_loss + reg_loss
 
 
 class SoftCE(nn.Module):
@@ -85,5 +79,5 @@ class SoftCE(nn.Module):
         target_onehot = torch.eye(num_labels)[target].to(target.device)
         target_onehot[target_onehot == 1] = 1 - smooth
         target_onehot[target_onehot == 0] = smooth / (num_labels - 1)
-        logprobs = F.log_softmax(input_, dim = 1)
+        logprobs = F.log_softmax(input_, dim=1)
         return  -(target_onehot * logprobs).sum() / input_.shape[0]
