@@ -438,7 +438,7 @@ class RandomFlip(Transform):
             image = np.fliplr(image)
         if self.allow_ud_flips and self.get_random_variable('flip_ud'):
             image = np.flipud(image)
-        return image
+        return image.copy()
 
 
 class CenterCrop(Transform):

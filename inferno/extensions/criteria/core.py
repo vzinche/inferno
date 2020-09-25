@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from functools import reduce
 from ...utils.exceptions import assert_, ShapeError, NotTorchModuleError
@@ -33,6 +34,8 @@ class Criteria(nn.Module):
         assert isinstance(prediction, (list, tuple)), \
             "`prediction` must be a list or a tuple, got {} instead."\
                 .format(type(prediction).__name__)
+        if isinstance(target, torch.Tensor):
+            target = [target]
         assert isinstance(target, (list, tuple)), \
             "`prediction` must be a list or a tuple, got {} instead." \
                 .format(type(target).__name__)
