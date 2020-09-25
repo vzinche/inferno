@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-__all__ = ['TripletLoss', 'ContrastiveLoss']
+__all__ = ['TripletLoss', 'ContrastiveLoss', 'PairwiseContrastive']
 
 
 class TripletLoss(nn.Module):
@@ -59,6 +59,6 @@ class PairwiseContrastive(nn.Module):
         samples1, samples2 = inp[::2], inp[1::2]
         pos_dist = (samples1 - samples2).norm(p=self.p, dim=1)
         neg_dist = (torch.roll(samples1, 1, 0) - samples2).norm(p=self.p, dim=1)
-        labels = torch.cat((torch.ones(len(pos_dist)), torch.zeros(len(neg_dist))))
+        labels = torch.cat((torch.ones(len(pos_dist)), torch.zeros(len(neg_dist)))).to(inp.device)
         loss = self.contr(torch.cat((pos_dist, neg_dist)), labels)
         return loss
