@@ -1,6 +1,6 @@
 import numpy as np
 import scipy
-from scipy.ndimage import zoom
+from scipy.ndimage import zoom, rotate
 from scipy.ndimage.morphology import binary_dilation, binary_erosion
 from .base import Transform
 from ...utils.exceptions import assert_
@@ -27,7 +27,7 @@ class RandomFlip3D(Transform):
 
 
 class RandomRot3D(Transform):
-    def __init__(self, rot_range, p=0.125, reshape=False, order=0, mode='nearest', **super_kwargs):
+    def __init__(self, rot_range, p=0.125, reshape=False, order=0, mode='constant', **super_kwargs):
         super(RandomRot3D, self).__init__(**super_kwargs)
         self.rot_range = rot_range
         self.p = p
@@ -53,19 +53,16 @@ class RandomRot3D(Transform):
 
         # rotate along z-axis
         if self.get_random_variable('do_z'):
-            volume = scipy.ndimage.interpolation.rotate(volume, angle_z,
-                                                        order=self.order, mode=self.mode,
-                                                        axes=(0, 1), reshape=self.reshape)
+            volume = rotate(volume, angle_z, order=self.order, mode=self.mode,
+                            axes=(0, 1), reshape=self.reshape)
         # rotate along y-axis
         if self.get_random_variable('do_y'):
-            volume = scipy.ndimage.interpolation.rotate(volume, angle_y,
-                                                        order=self.order, mode=self.mode,
-                                                        axes=(0, 2), reshape=self.reshape)
+            volume = rotate(volume, angle_y, order=self.order, mode=self.mode,
+                            axes=(0, 2), reshape=self.reshape)
         # rotate along x-axis
         if self.get_random_variable('do_y'):
-            volume = scipy.ndimage.interpolation.rotate(volume, angle_x,
-                                                        order=self.order, mode=self.mode,
-                                                        axes=(1, 2), reshape=self.reshape)
+            volume = rotate(volume, angle_x, order=self.order, mode=self.mode,
+                            axes=(1, 2), reshape=self.reshape)
         return volume
 
 

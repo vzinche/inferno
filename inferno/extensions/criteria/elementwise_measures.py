@@ -47,19 +47,18 @@ class Norm(nn.Module):
             norm = norm / len(inp)
         return norm
 
-
 class MaskedBce(nn.Module):
     # Masked binary crossentropy to target
-    def __init__(self, mask_value=False):
+    def __init__(self, mask_value=None):
         super(MaskedBce, self).__init__()
         self.mask_value = mask_value     # the value to ignore for reconstruction loss
 
     def forward(self, output, target):
         # check if bool False and not int 0
-        if not self.mask_value and isinstance(self.mask_value, bool):
+        if self.mask_value is None:
             mask = torch.ones(target.shape).bool()
         else:
-            mask = (target != self.mask_value)
+            mask = ~torch.isclose(target, torch.ones_like(target) * self.mask_value, atol=5e-03)
         bce_loss = F.binary_cross_entropy(output[mask].flatten(),
                                           target[mask].flatten())
         return bce_loss
