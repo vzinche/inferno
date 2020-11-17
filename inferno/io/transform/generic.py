@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from scipy.stats import median_absolute_deviation
 from .base import Transform, DTypeMapping
 from ...utils.exceptions import assert_, DTypeError
 
@@ -41,9 +42,45 @@ class Normalize(Transform):
             tensor = (tensor - mean.reshape(*reshape_as)) / (std.reshape(*reshape_as) + self.eps)
         else:
             # if tensor is int, the normalized tensor will be in int as well
-            tensor = tensor.astype('float64')
+            tensor = tensor.astype('float32')
             tensor[mask] = ((tensor - mean.reshape(*reshape_as)) \
                             / (std.reshape(*reshape_as) + self.eps))[mask]
+        return tensor
+
+
+class NormalizeMedian(Transform):
+    """Normalizes input using median and median absolute deviation."""
+    def __init__(self, eps=1e-4, ignore_value=None, clip_min=None, clip_max=None, **super_kwargs):
+        """
+        Parameters
+        ----------
+        eps : float
+            A small epsilon for numerical stability.
+        ignore_value: float
+            A background value to ignore while computing median and MAD
+        clip_min / clip_max: float
+            Clip everything below/above this value
+        super_kwargs : dict
+            Kwargs to the superclass `inferno.io.transform.base.Transform`.
+        """
+        super().__init__(**super_kwargs)
+        self.eps = eps
+        self.ignore_value = ignore_value
+        self.min = clip_min
+        self.max = clip_max
+
+    def tensor_function(self, tensor):
+        if self.ignore_value is not None:
+            mask = (tensor != self.ignore_value)
+            median = np.median(tensor[mask])
+            mad = median_absolute_deviation(tensor[mask], axis=None)
+            tensor[mask] = ((tensor - median) / (mad + self.eps))[mask]
+        else:
+            median = np.median(tensor)
+            mad = median_absolute_deviation(tensor, axis=None)
+            tensor = (tensor - median) / (mad + self.eps)
+        if self.min is not None or self.max is not None:
+            tensor = np.clip(tensor, a_min=self.min, a_max=self.max)
         return tensor
 
 
@@ -168,6 +205,8 @@ class AsTorchBatch(Transform):
         assert_(isinstance(tensor, np.ndarray),
                 "Expected numpy array, got %s" % type(tensor),
                 DTypeError)
+        # some of the np functions return view, and then tensor[None, ...] complains
+        tensor = tensor.copy()
         if self.dimensionality == 3:
             # We're dealing with a volume. tensor can either be 3D or 4D
             assert tensor.ndim in [3, 4]
