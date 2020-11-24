@@ -66,6 +66,24 @@ class RandomRot3D(Transform):
         return volume
 
 
+class RandomRot903D(Transform):
+    """Random 90-degree rotations."""
+    def __init__(self, **super_kwargs):
+        super().__init__(**super_kwargs)
+
+    def build_random_variables(self, **kwargs):
+        np.random.seed()
+        self.set_random_variable('k_z', np.random.randint(0, 4))
+        self.set_random_variable('k_y', np.random.randint(0, 4))
+        self.set_random_variable('k_x', np.random.randint(0, 4))
+
+    def volume_function(self, volume):
+        volume = np.rot90(volume, k=self.get_random_variable('k_z'), axes=(0, 1))
+        volume = np.rot90(volume, k=self.get_random_variable('k_y'), axes=(0, 2))
+        volume = np.rot90(volume, k=self.get_random_variable('k_x'), axes=(1, 2))
+        return volume
+
+
 # TODO this is obsolete
 class AdditiveRandomNoise3D(Transform):
     """ Add gaussian noise to 3d volume
